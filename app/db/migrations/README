@@ -1,0 +1,7 @@
+Alembic migrations for Vaultlas.
+
+Run migrations:
+  alembic upgrade head
+
+Create new migration:
+  alembic revision --autogenerate -m "description"
