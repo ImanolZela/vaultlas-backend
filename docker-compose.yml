@@ -73,6 +73,25 @@ services:
       - vaultlas-network
     command: celery -A app.worker.tasks worker --loglevel=info
 
+  frontend:
+    build:
+      context: ../vaultlas-frontend
+      dockerfile: Dockerfile
+    container_name: vaultlas-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ../vaultlas-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - vaultlas-network
+
 volumes:
   postgres_data:
 
