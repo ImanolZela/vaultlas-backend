@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.session import Base
 
 
@@ -10,7 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     documents = relationship("Document", back_populates="user")
     goals = relationship("Goal", back_populates="user")
@@ -26,7 +26,7 @@ class Document(Base):
     bank = Column(String, default="BCP")
     status = Column(String, default="pending")
     periodo = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="documents")
     movements = relationship("Movement", back_populates="document", cascade="all, delete-orphan")
@@ -45,7 +45,7 @@ class Movement(Base):
     monto = Column(Float, nullable=False)
     tipo = Column(String, nullable=False)
     confirmed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     document = relationship("Document", back_populates="movements")
 
@@ -58,7 +58,7 @@ class Goal(Base):
     mes = Column(Integer, nullable=False)
     ano = Column(Integer, nullable=False)
     meta_ingresos = Column(Float, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="goals")
 
