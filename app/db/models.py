@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.db.session import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -19,7 +20,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     pdf_hash = Column(String, nullable=False)
     filename = Column(String, nullable=False)
     bank = Column(String, default="BCP")
@@ -37,7 +38,7 @@ class Movement(Base):
     __tablename__ = "movements"
 
     id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
+    document_id = Column(Integer, ForeignKey("documents.id"), nullable=False, index=True)
     fecha = Column(String, nullable=False)
     descripcion = Column(String, nullable=False)
     codigo_operacion = Column(String)
