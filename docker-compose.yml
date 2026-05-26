@@ -92,6 +92,16 @@ services:
     networks:
       - vaultlas-network
 
+  adminer:
+    image: adminer:latest
+    container_name: vaultlas-adminer
+    ports:
+      - "8888:8080"
+    depends_on:
+      - postgres
+    networks:
+      - vaultlas-network
+
 volumes:
   postgres_data:
 
