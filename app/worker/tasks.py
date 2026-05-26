@@ -1,3 +1,5 @@
+import base64
+
 from celery import Celery
 from app.core.config import settings
 
@@ -13,79 +15,56 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    broker_connection_retry_on_startup=True,
 )
 
 
 @celery_app.task(name="process_pdf")
-def process_pdf(document_id: int, pdf_bytes: bytes, password: str) -> dict:
-    """Process a BCP PDF statement and extract movements."""
-    from sqlalchemy.orm import Session
+def process_pdf(document_id: int, pdf_bytes_b64: str, password: str) -> dict:
     from app.db.session import SessionLocal
     from app.db.models import Document, Movement
-    import pdfplumber
-    import pypdf
-    import io
+    from app.services.pdf_service import unlock_pdf, extract_pdf_content
+    from app.services.bcp_parser import parse_bcp_movements, detect_periodo
 
-    db: Session = SessionLocal()
+    db = SessionLocal()
+    doc = None
     try:
-        document = db.query(Document).filter(Document.id == document_id).first()
-        if not document:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
             return {"status": "error", "message": "Document not found"}
 
-        pdf_stream = io.BytesIO(pdf_bytes)
-        reader = pypdf.PdfReader(pdf_stream)
-        if reader.is_encrypted:
-            reader.decrypt(password)
+        pdf_bytes = base64.b64decode(pdf_bytes_b64)
+        unlock_pdf(pdf_bytes, password)
+        extraction = extract_pdf_content(pdf_bytes, password)
 
-        pdf_stream.seek(0)
-        with pdfplumber.open(pdf_stream, password=password) as pdf:
-            movements = []
-            for page in pdf.pages:
-                tables = page.extract_tables()
-                for table in tables:
-                    for row in table:
-                        if row and len(row) >= 5:
-                            fecha = row[0]
-                            descripcion = row[1]
-                            codigo = row[2] if len(row) > 2 else None
-                            cargo = row[3] if len(row) > 3 else None
-                            abono = row[4] if len(row) > 4 else None
+        if extraction["error"]:
+            raise ValueError(f"Error extrayendo PDF: {extraction['error']}")
 
-                            if not fecha or not descripcion:
-                                continue
+        movements_data = parse_bcp_movements(extraction["tables"])
+        periodo = detect_periodo(movements_data)
 
-                            try:
-                                if abono and abono.strip():
-                                    monto = float(abono.replace(",", "").replace(" ", ""))
-                                    tipo = "ingreso"
-                                elif cargo and cargo.strip():
-                                    monto = float(cargo.replace(",", "").replace(" ", ""))
-                                    tipo = "egreso"
-                                else:
-                                    continue
-                            except (ValueError, AttributeError):
-                                continue
+        for m in movements_data:
+            movement = Movement(
+                document_id=document_id,
+                fecha=m["fecha"],
+                descripcion=m["descripcion"],
+                codigo_operacion=m.get("codigo_operacion"),
+                monto=m["monto"],
+                tipo=m["tipo"],
+                confirmed=False,
+            )
+            db.add(movement)
 
-                            movements.append(Movement(
-                                document_id=document_id,
-                                fecha=str(fecha).strip(),
-                                descripcion=str(descripcion).strip(),
-                                codigo_operacion=str(codigo).strip() if codigo else None,
-                                monto=monto,
-                                tipo=tipo,
-                                confirmed=False,
-                            ))
-
-        for m in movements:
-            db.add(m)
-
-        document.status = "done"
+        doc.status = "done"
+        if periodo:
+            doc.periodo = periodo
         db.commit()
-        return {"status": "done", "movements_count": len(movements)}
+
+        return {"status": "done", "movements_count": len(movements_data)}
 
     except Exception as e:
-        if document:
-            document.status = "error"
+        if doc:
+            doc.status = "error"
             db.commit()
         return {"status": "error", "message": str(e)}
     finally:
