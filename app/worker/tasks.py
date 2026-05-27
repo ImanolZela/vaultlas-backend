@@ -34,14 +34,15 @@ def process_pdf(document_id: int, pdf_bytes_b64: str, password: str) -> dict:
             return {"status": "error", "message": "Document not found"}
 
         pdf_bytes = base64.b64decode(pdf_bytes_b64)
-        unlock_pdf(pdf_bytes, password)
-        extraction = extract_pdf_content(pdf_bytes, password)
+        decrypted_bytes = unlock_pdf(pdf_bytes, password)
+        extraction = extract_pdf_content(decrypted_bytes)
 
         if extraction["error"]:
             raise ValueError(f"Error extrayendo PDF: {extraction['error']}")
 
-        movements_data = parse_bcp_movements(extraction["tables"])
-        periodo = detect_periodo(movements_data)
+        text = extraction.get("text", "")
+        movements_data = parse_bcp_movements(extraction["tables"], text)
+        periodo = detect_periodo(movements_data, text)
 
         for m in movements_data:
             movement = Movement(

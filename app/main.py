@@ -7,8 +7,9 @@ from app.api.routes.documents import router as documents_router
 from app.api.routes.movements import router as movements_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.goals import router as goals_router
+from app.api.routes import exports
 
-app = FastAPI(title=settings.PROJECT_NAME, version="0.1.0")
+app = FastAPI(title=settings.PROJECT_NAME, version="0.1.0", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,6 +28,7 @@ app.include_router(documents_router)
 app.include_router(movements_router)
 app.include_router(reports_router)
 app.include_router(goals_router)
+app.include_router(exports.router, prefix="/api/exports", tags=["exports"])
 
 
 @app.get("/")
