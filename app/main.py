@@ -11,6 +11,8 @@ from app.api.routes import exports
 from app.api.routes.income import router as income_router
 from app.api.routes.expense import router as expense_router
 from app.api.routes.budget import router as budget_router
+from app.api.routes.reconciliation import router as reconciliation_router
+from app.api.routes.annual_summary import router as annual_router
 
 app = FastAPI(title=settings.PROJECT_NAME, version="0.1.0", redirect_slashes=False)
 
@@ -35,6 +37,8 @@ app.include_router(exports.router, prefix="/api/exports", tags=["exports"])
 app.include_router(income_router)
 app.include_router(expense_router)
 app.include_router(budget_router)
+app.include_router(reconciliation_router)
+app.include_router(annual_router)
 
 
 @app.get("/")
