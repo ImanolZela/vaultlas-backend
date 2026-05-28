@@ -35,9 +35,21 @@ async def on_startup():
         logging.getLogger("uvicorn.error").warning(f"Migration skipped: {e}")
 
 
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:8000",
+]
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in _ALLOWED_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return JSONResponse(status_code=500, content={"detail": str(exc)}, headers=headers)
 
 
 app.add_middleware(

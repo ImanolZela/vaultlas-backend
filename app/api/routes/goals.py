@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.api.schemas import GoalCreate, GoalResponse
@@ -37,18 +38,15 @@ def create_or_update_goal(
     return goal
 
 
-@router.get("/{mes}/{ano}", response_model=GoalResponse)
+@router.get("/{mes}/{ano}", response_model=Optional[GoalResponse])
 def get_goal(
     mes: int,
     ano: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    goal = db.query(Goal).filter(
+    return db.query(Goal).filter(
         Goal.user_id == current_user.id,
         Goal.mes == mes,
         Goal.ano == ano,
     ).first()
-    if not goal:
-        raise HTTPException(status_code=404, detail="Meta no encontrada")
-    return goal

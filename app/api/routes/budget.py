@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from datetime import date
 
 from app.api.schemas import MonthlyBudgetCreate, MonthlyBudgetUpdate, MonthlyBudgetResponse
@@ -68,18 +69,28 @@ def get_budget(
     ).first()
 
     if not budget:
-        budget = MonthlyBudget(
-            user_id=current_user.id,
-            month=date(ano, mes, 1),
-            total_income=0,
-            status="draft",
-        )
-        db.add(budget)
-        db.commit()
-        db.refresh(budget)
+        try:
+            budget = MonthlyBudget(
+                user_id=current_user.id,
+                month=date(ano, mes, 1),
+                total_income=0,
+                status="draft",
+            )
+            db.add(budget)
+            db.commit()
+            db.refresh(budget)
+        except IntegrityError:
+            db.rollback()
+            budget = db.query(MonthlyBudget).filter(
+                MonthlyBudget.user_id == current_user.id,
+                MonthlyBudget.month == date(ano, mes, 1),
+            ).first()
     else:
-        update_actual_spending(budget, db)
-        db.commit()
+        try:
+            update_actual_spending(budget, db)
+            db.commit()
+        except Exception:
+            db.rollback()
 
     return budget
 
