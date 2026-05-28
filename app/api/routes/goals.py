@@ -49,6 +49,12 @@ def get_goal(
         Goal.mes == mes,
         Goal.ano == ano,
     ).first()
+
     if not goal:
-        raise HTTPException(status_code=404, detail="Meta no encontrada")
+        goal = Goal(
+            user_id=current_user.id,
+            mes=mes,
+            ano=ano,
+            meta_ingresos=0,
+        )
     return goal
