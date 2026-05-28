@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.api.routes.auth import router as auth_router
@@ -14,7 +15,30 @@ from app.api.routes.budget import router as budget_router
 from app.api.routes.reconciliation import router as reconciliation_router
 from app.api.routes.annual_summary import router as annual_router
 
+def run_migrations():
+    from alembic.config import Config
+    from alembic import command
+    import os
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
+
+
 app = FastAPI(title=settings.PROJECT_NAME, version="0.1.0", redirect_slashes=False)
+
+
+@app.on_event("startup")
+async def on_startup():
+    try:
+        run_migrations()
+    except Exception as e:
+        import logging
+        logging.getLogger("uvicorn.error").warning(f"Migration skipped: {e}")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
 
 app.add_middleware(
     CORSMiddleware,
