@@ -24,7 +24,7 @@ def _month_range(mes: int, ano: int):
     return start, end
 
 
-@router.post("/{mes}/{ano}/start")
+@router.post("/{mes}/{ano}/start", response_model=ReconciliationReportResponse)
 def start_reconciliation(
     mes: int,
     ano: int,
@@ -109,13 +109,7 @@ def start_reconciliation(
     db.commit()
     db.refresh(report)
 
-    return {
-        "report_id": report.id,
-        "status": "in_progress",
-        "income_difference": diffs['income_difference'],
-        "expense_difference": diffs['expense_difference'],
-        "unmatched_count": len(unmatched),
-    }
+    return report
 
 
 @router.get("/{mes}/{ano}", response_model=ReconciliationReportResponse)
@@ -176,7 +170,7 @@ def update_reconciliation_item(
     return item
 
 
-@router.post("/{mes}/{ano}/complete")
+@router.post("/{mes}/{ano}/complete", response_model=ReconciliationReportResponse)
 def complete_reconciliation(
     mes: int,
     ano: int,
@@ -203,4 +197,5 @@ def complete_reconciliation(
         budget.pdf_received_date = datetime.now(timezone.utc)
 
     db.commit()
-    return {"status": "completed"}
+    db.refresh(report)
+    return report
