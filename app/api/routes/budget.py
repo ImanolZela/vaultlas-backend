@@ -87,6 +87,10 @@ def get_budget(
             ).first()
     else:
         try:
+            budget.total_income = calculate_monthly_income(
+                current_user.id, mes, ano, db
+            )
+            calculate_budget_amounts(budget)
             update_actual_spending(budget, db)
             db.commit()
         except Exception:
